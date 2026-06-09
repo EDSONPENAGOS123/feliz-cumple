@@ -90,17 +90,17 @@
   }
   #message > * {
     opacity: 0;
-    transform: translateY(18px);
-    transition: opacity 2.2s ease, transform 2.2s ease;
+    transform: translateY(14px);
+    transition: opacity 1.2s ease, transform 1.2s ease;
   }
   #message.show > * {
     opacity: 1;
     transform: translateY(0);
   }
-  #message.show > *:nth-child(1) { transition-delay: 0.4s; }
-  #message.show > *:nth-child(2) { transition-delay: 1.6s; }
-  #message.show > *:nth-child(3) { transition-delay: 2.8s; }
-  #message.show > *:nth-child(4) { transition-delay: 4.0s; }
+  #message.show > *:nth-child(1) { transition-delay: 0.1s; }
+  #message.show > *:nth-child(2) { transition-delay: 0.7s; }
+  #message.show > *:nth-child(3) { transition-delay: 1.3s; }
+  #message.show > *:nth-child(4) { transition-delay: 1.9s; }
   #message h2 {
     font-size: clamp(1.4rem, 4vw, 2.4rem);
     color: #FFA216;
@@ -228,8 +228,10 @@ for (let i = 0; i < 16; i++) {
   petalSizes.push(segments.length - before);
 }
 
+const FLOWER_CX = W/2;
+const FLOWER_CY = 280; // shift flower up so stem fits below
 function toCanvas(x, y) {
-  return { x: W/2 + x, y: H/2 - y };
+  return { x: FLOWER_CX + x, y: FLOWER_CY - y };
 }
 
 function drawSegment(seg) {
@@ -260,15 +262,65 @@ function startFlower() {
   petalIdx = 0;
   petalCursor = 0;
   segInPetal = 0;
-  requestAnimationFrame(drawPetalStep);
+  growStem();
 }
+
+// Stem grows from bottom up to flower base
+function growStem() {
+  const topY = FLOWER_CY + 140;
+  const bottomY = H - 30;
+  const totalLen = bottomY - topY;
+  const dur = 700;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 2);
+    const len = totalLen * eased;
+    // overwrite stem strip each frame
+    ctx.fillStyle = '#000';
+    ctx.fillRect(FLOWER_CX - 30, topY - 5, 60, totalLen + 15);
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#3d7a1a';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = '#2d5016';
+    ctx.shadowBlur = 8;
+    const endY = bottomY - len; // grow upward from bottom toward top? we want bottom->top? actually stem starts at flower base. let's grow downward.
+    // start at top (flower base), curve down
+    ctx.moveTo(FLOWER_CX, topY);
+    const cp1x = FLOWER_CX + 14;
+    const cp1y = topY + (len) * 0.5;
+    const endActualY = topY + len;
+    ctx.quadraticCurveTo(cp1x, cp1y, FLOWER_CX, endActualY);
+    ctx.stroke();
+
+    // small leaf when stem ~60%+
+    if (t >= 0.6) {
+      const leafT = Math.min(1, (t - 0.6) / 0.4);
+      const leafSize = 28 * leafT;
+      const leafX = FLOWER_CX + 14;
+      const leafY = topY + len * 0.55;
+      ctx.beginPath();
+      ctx.fillStyle = '#4a8c20';
+      ctx.shadowBlur = 4;
+      ctx.ellipse(leafX + leafSize*0.6, leafY, leafSize, leafSize * 0.45, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (t < 1) requestAnimationFrame(step);
+    else requestAnimationFrame(drawPetalStep);
+  }
+  requestAnimationFrame(step);
+}
+
 function drawPetalStep() {
   if (petalIdx >= petalSizes.length) {
-    setTimeout(finishFlower, 900);
+    setTimeout(finishFlower, 150);
     return;
   }
   const petalLen = petalSizes[petalIdx];
-  const perFrame = 1; // very slow: ~37 frames per petal ≈ 0.6s
+  const perFrame = 4; // ~9 frames per petal ≈ 150ms; 16 petals × 150ms ≈ 2.4s
   for (let k = 0; k < perFrame && segInPetal < petalLen; k++) {
     drawSegment(segments[petalCursor + segInPetal]);
     segInPetal++;
@@ -279,26 +331,26 @@ function drawPetalStep() {
     petalCursor += petalLen;
     petalIdx++;
     segInPetal = 0;
-    setTimeout(() => requestAnimationFrame(drawPetalStep), 320);
+    setTimeout(() => requestAnimationFrame(drawPetalStep), 25);
   }
 }
 function finishFlower() {
   const c = toCanvas(0, 0);
-  // Soft green base disk grows in
+  // Warm yellowish-brown base disk grows in
   const targetR = 52;
-  const duration = 1600;
+  const duration = 450;
   const start = performance.now();
   function growBase(now) {
     const tt = Math.min(1, (now - start) / duration);
     const eased = 1 - Math.pow(1 - tt, 3);
     const r = targetR * eased;
     const grad = ctx.createRadialGradient(c.x, c.y, 4, c.x, c.y, Math.max(10, r + 8));
-    grad.addColorStop(0, '#1a3d10');
-    grad.addColorStop(0.7, '#2d5016');
-    grad.addColorStop(1, '#4a7c2a');
+    grad.addColorStop(0, '#3a1f08');
+    grad.addColorStop(0.6, '#6a3f12');
+    grad.addColorStop(1, '#a87b3c');
     ctx.beginPath();
-    ctx.shadowColor = '#6ba32f';
-    ctx.shadowBlur = 35;
+    ctx.shadowColor = '#FFA216';
+    ctx.shadowBlur = 30;
     ctx.fillStyle = grad;
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -307,16 +359,16 @@ function finishFlower() {
   }
   requestAnimationFrame(growBase);
 
-  // Vogel phyllotaxis: golden-angle spiral of green seeds
+  // Vogel phyllotaxis: golden-angle spiral, yellowish-brown seeds
   function drawPhyllotaxis() {
     const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // 137.5°
-    const total = 280;
+    const total = 260;
     const scale = 2.7;
-    const greens = ['#7dd352','#5bb025','#3d8e16','#a3e261','#4a7c2a','#6ba32f'];
+    const browns = ['#5a3a14','#7a4f1a','#a06a28','#c98a3a','#8a5a20','#6a4218'];
     let i = 0;
     function step() {
       ctx.shadowBlur = 0;
-      const perFrame = 2;
+      const perFrame = 10;
       for (let k = 0; k < perFrame && i < total; k++) {
         const r = scale * Math.sqrt(i);
         const theta = i * goldenAngle;
@@ -324,9 +376,9 @@ function finishFlower() {
         const y = c.y + r * Math.sin(theta);
         const size = 1.4 + (i / total) * 1.6;
         ctx.beginPath();
-        ctx.fillStyle = greens[i % greens.length];
-        ctx.shadowColor = '#a3e261';
-        ctx.shadowBlur = 3;
+        ctx.fillStyle = browns[i % browns.length];
+        ctx.shadowColor = '#FFA216';
+        ctx.shadowBlur = 2;
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
         i++;
@@ -336,8 +388,8 @@ function finishFlower() {
       } else {
         setTimeout(() => {
           document.getElementById('message').classList.add('show');
-        }, 700);
-        setTimeout(rainEmoji, 2200);
+        }, 250);
+        setTimeout(rainEmoji, 1200);
       }
     }
     requestAnimationFrame(step);
