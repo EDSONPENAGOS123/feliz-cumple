@@ -29,12 +29,35 @@
   }
   .screen.hidden { opacity: 0; pointer-events: none; }
 
+  #catImg {
+    max-width: min(280px, 60vw);
+    max-height: 32vh;
+    border-radius: 22px;
+    margin-bottom: 28px;
+    box-shadow: 0 10px 50px rgba(255, 162, 22, 0.4),
+                0 0 0 3px rgba(255, 162, 22, 0.2);
+    object-fit: cover;
+    display: block;
+    animation: gentleBob 4s ease-in-out infinite;
+  }
+  @keyframes gentleBob {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50%      { transform: translateY(-6px) rotate(1deg); }
+  }
   #screen1 h1 {
     font-size: clamp(1.4rem, 5vw, 3rem);
     margin-bottom: 50px;
     color: #fff;
     text-shadow: 0 0 30px rgba(255, 162, 22, 0.4);
     max-width: 90vw;
+  }
+  #noBtn {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background 0.2s, color 0.2s, box-shadow 0.2s;
+    transform-origin: center center;
+  }
+  #siBtn {
+    min-width: 60px;
   }
   .buttons {
     display: flex;
@@ -134,6 +157,7 @@
 <body>
 
 <div id="screen1" class="screen">
+  <img id="catImg" src="gato.jpg" alt="" onerror="this.style.display='none'">
   <h1>¿Crees que me olvidé de tu cumpleaños?</h1>
   <div class="buttons">
     <button id="siBtn" type="button">Sí</button>
@@ -154,7 +178,7 @@
 </div>
 
 <script>
-// ============== SI BUTTON ESCAPES ==============
+// ============== SI BUTTON ESCAPES + NO GROWS ==============
 const siBtn = document.getElementById('siBtn');
 const noBtn = document.getElementById('noBtn');
 let noLocked = false;
@@ -167,9 +191,36 @@ function lockNo() {
   noBtn.style.margin = '0';
   noLocked = true;
 }
-function escapeSi(e) {
-  if (e) e.preventDefault();
-  lockNo();
+
+const siVariants = [
+  'Sí',
+  '¿De verdad?',
+  '¿En serio?',
+  '¿De verdad de verdad?',
+  '¿Segurísima?',
+  '¿De verdad, viere que me olvidé?',
+  '¿Cómo crees?',
+  'Insiste pues',
+  '¿En serio en serio?',
+  '¿Otra vez?',
+  '¿De verdad piensas eso?',
+  '¿Estás segura segura?',
+  '¿Tú confías tan poquito en mí?',
+  '¿Apuestas?',
+];
+let siInteractCount = 0;
+let noScale = 1;
+let isOverSi = false;
+
+function changeSiText() {
+  siInteractCount++;
+  siBtn.textContent = siVariants[siInteractCount % siVariants.length];
+}
+function growNo() {
+  noScale = Math.min(2.6, noScale + 0.11);
+  noBtn.style.transform = `scale(${noScale})`;
+}
+function teleportSi() {
   const pad = 20;
   const w = Math.max(50, window.innerWidth  - siBtn.offsetWidth  - pad);
   const h = Math.max(50, window.innerHeight - siBtn.offsetHeight - pad);
@@ -177,8 +228,20 @@ function escapeSi(e) {
   siBtn.style.left = (pad + Math.random() * (w - pad)) + 'px';
   siBtn.style.top  = (pad + Math.random() * (h - pad)) + 'px';
 }
-['mouseenter','mouseover','mousemove','pointerenter','pointermove','touchstart','focus','click']
-  .forEach(ev => siBtn.addEventListener(ev, escapeSi, { passive: false }));
+function onSiContact(e) {
+  if (e) e.preventDefault?.();
+  if (isOverSi) return;
+  isOverSi = true;
+  lockNo();
+  changeSiText();
+  growNo();
+  teleportSi();
+  setTimeout(() => { isOverSi = false; }, 80);
+}
+['pointerenter','focus','click','touchstart'].forEach(ev =>
+  siBtn.addEventListener(ev, onSiContact, { passive: false })
+);
+siBtn.addEventListener('pointerleave', () => { isOverSi = false; });
 
 // ============== NO -> FLOWER ==============
 noBtn.addEventListener('click', () => {
