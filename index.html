@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feliz Cumple Mejor Amiga</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: radial-gradient(circle at center, #1a0f00 0%, #000 70%);
+    color: #FFA216;
+  }
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+    transition: opacity 1s ease;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  #screen1 h1 {
+    font-size: clamp(1.4rem, 5vw, 3rem);
+    margin-bottom: 50px;
+    color: #fff;
+    text-shadow: 0 0 30px rgba(255, 162, 22, 0.4);
+    max-width: 90vw;
+  }
+  .buttons {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-size: 1.6rem;
+    padding: 16px 50px;
+    border: 2px solid #FFA216;
+    background: transparent;
+    color: #FFA216;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  }
+  button:hover {
+    background: #FFA216;
+    color: #000;
+    box-shadow: 0 0 25px rgba(255, 162, 22, 0.6);
+  }
+  #siBtn {
+    transition: left 0.12s ease, top 0.12s ease, background 0.2s, color 0.2s;
+  }
+
+  #flowerWrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #flowerCanvas {
+    display: block;
+    max-width: 92vw;
+    max-height: 78vh;
+    width: auto;
+    height: auto;
+  }
+
+  #message {
+    position: absolute;
+    bottom: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 2.5s ease;
+    width: 92%;
+    max-width: 640px;
+    pointer-events: none;
+  }
+  #message.show { opacity: 1; }
+  #message h2 {
+    font-size: clamp(1.4rem, 4vw, 2.4rem);
+    color: #FFA216;
+    margin-bottom: 8px;
+    text-shadow: 0 0 25px rgba(255, 162, 22, 0.8);
+  }
+  #message p {
+    font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+    color: #fff;
+    margin-top: 6px;
+  }
+  #message .sign {
+    margin-top: 14px;
+    font-style: italic;
+    color: #FFD27A;
+  }
+
+  .float {
+    position: fixed;
+    pointer-events: none;
+    font-size: 22px;
+    animation: floatUp linear forwards;
+    z-index: 5;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div id="screen1" class="screen">
+  <h1>¿Crees que me olvidé de tu cumpleaños?</h1>
+  <div class="buttons">
+    <button id="siBtn" type="button">Sí</button>
+    <button id="noBtn" type="button">No</button>
+  </div>
+</div>
+
+<div id="screen2" class="screen hidden">
+  <div id="flowerWrap">
+    <canvas id="flowerCanvas" width="800" height="800"></canvas>
+  </div>
+  <div id="message">
+    <h2>Feliz Cumpleaños, Mejor Amiga</h2>
+    <p>Te amo, amor de mi vida.</p>
+    <p>Aquí están tus girasoles, dibujados con código solo para ti.</p>
+    <p class="sign">Te amo, piroba</p>
+  </div>
+</div>
+
+<script>
+// ============== SI BUTTON ESCAPES ==============
+const siBtn = document.getElementById('siBtn');
+function escapeSi(e) {
+  if (e) e.preventDefault();
+  const pad = 20;
+  const w = Math.max(50, window.innerWidth  - siBtn.offsetWidth  - pad);
+  const h = Math.max(50, window.innerHeight - siBtn.offsetHeight - pad);
+  siBtn.style.position = 'fixed';
+  siBtn.style.left = (pad + Math.random() * (w - pad)) + 'px';
+  siBtn.style.top  = (pad + Math.random() * (h - pad)) + 'px';
+}
+['mouseenter','mouseover','mousemove','pointerenter','pointermove','touchstart','focus','click']
+  .forEach(ev => siBtn.addEventListener(ev, escapeSi, { passive: false }));
+
+// ============== NO -> FLOWER ==============
+document.getElementById('noBtn').addEventListener('click', () => {
+  const s1 = document.getElementById('screen1');
+  const s2 = document.getElementById('screen2');
+  s1.classList.add('hidden');
+  setTimeout(() => {
+    s2.classList.remove('hidden');
+    setTimeout(startFlower, 250);
+  }, 900);
+});
+
+// ============== SUNFLOWER (turtle port) ==============
+const canvas = document.getElementById('flowerCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const deg = d => d * Math.PI / 180;
+
+const t = { x: 0, y: -40, heading: 0 };
+const segments = [];
+
+function circle(r, extent, color) {
+  const cx = t.x + r * Math.cos(deg(t.heading + 90));
+  const cy = t.y + r * Math.sin(deg(t.heading + 90));
+  const startAng = t.heading - 90;
+  const endAng = startAng + extent;
+  segments.push({ cx, cy, r, startAng, endAng, color });
+  t.x = cx + r * Math.cos(deg(endAng));
+  t.y = cy + r * Math.sin(deg(endAng));
+  t.heading += extent;
+}
+const rt = d => { t.heading -= d; };
+const lt = d => { t.heading += d; };
+
+// Same algorithm as the Python turtle snippet
+for (let i = 0; i < 16; i++) {
+  for (let j = 0; j < 18; j++) {
+    rt(90); circle(150 - j*6, 90, '#FFA216'); lt(90);
+    circle(150 - j*6, 90, '#FFA216'); rt(180);
+  }
+  circle(40, 24, '#FFA216');
+}
+
+function toCanvas(x, y) {
+  return { x: W/2 + x, y: H/2 - y };
+}
+
+function drawSegment(seg) {
+  ctx.beginPath();
+  ctx.strokeStyle = seg.color;
+  ctx.lineWidth = 1.1;
+  ctx.shadowColor = seg.color;
+  ctx.shadowBlur = 6;
+  const span = Math.abs(seg.endAng - seg.startAng);
+  const steps = Math.max(10, Math.ceil(span / 2));
+  for (let s = 0; s <= steps; s++) {
+    const a = seg.startAng + (seg.endAng - seg.startAng) * (s / steps);
+    const x = seg.cx + seg.r * Math.cos(deg(a));
+    const y = seg.cy + seg.r * Math.sin(deg(a));
+    const p = toCanvas(x, y);
+    if (s === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+}
+
+let idx = 0;
+function startFlower() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  idx = 0;
+  requestAnimationFrame(stepFlower);
+}
+function stepFlower() {
+  const perFrame = 10;
+  for (let k = 0; k < perFrame && idx < segments.length; k++) {
+    drawSegment(segments[idx++]);
+  }
+  if (idx < segments.length) {
+    requestAnimationFrame(stepFlower);
+  } else {
+    finishFlower();
+  }
+}
+function finishFlower() {
+  const c = toCanvas(0, 0);
+  const grad = ctx.createRadialGradient(c.x, c.y, 5, c.x, c.y, 55);
+  grad.addColorStop(0, '#3a1f08');
+  grad.addColorStop(1, '#7a3f10');
+  ctx.beginPath();
+  ctx.shadowColor = '#FFA216';
+  ctx.shadowBlur = 35;
+  ctx.fillStyle = grad;
+  ctx.arc(c.x, c.y, 48, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#FFA216';
+  for (let i = 0; i < 80; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const r = Math.random() * 42;
+    ctx.beginPath();
+    ctx.arc(c.x + Math.cos(ang) * r, c.y + Math.sin(ang) * r, Math.random() * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  document.getElementById('message').classList.add('show');
+  rainEmoji();
+}
+
+// ============== RAIN ==============
+function rainEmoji() {
+  const emojis = ['💛','🌻','✨','💖','🌟'];
+  setInterval(() => {
+    const el = document.createElement('div');
+    el.className = 'float';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = (Math.random() * 100) + 'vw';
+    el.style.bottom = '-30px';
+    el.style.fontSize = (16 + Math.random() * 22) + 'px';
+    const dur = 3.5 + Math.random() * 3;
+    el.style.animationDuration = dur + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), dur * 1000 + 200);
+  }, 320);
+}
+</script>
+</body>
+</html>
