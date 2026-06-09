@@ -206,21 +206,26 @@ function circle(r, extent, color) {
   const cy = t.y + r * Math.sin(deg(t.heading + 90));
   const startAng = t.heading - 90;
   const endAng = startAng + extent;
-  segments.push({ cx, cy, r, startAng, endAng, color });
+  const seg = { cx, cy, r, startAng, endAng, color };
+  segments.push(seg);
   t.x = cx + r * Math.cos(deg(endAng));
   t.y = cy + r * Math.sin(deg(endAng));
   t.heading += extent;
+  return seg;
 }
 const rt = d => { t.heading -= d; };
 const lt = d => { t.heading += d; };
 
-// Same algorithm as the Python turtle snippet
+// Build segments grouped petal-by-petal (16 petals, each ~37 arcs)
+const petalSizes = [];
 for (let i = 0; i < 16; i++) {
+  const before = segments.length;
   for (let j = 0; j < 18; j++) {
     rt(90); circle(150 - j*6, 90, '#FFA216'); lt(90);
     circle(150 - j*6, 90, '#FFA216'); rt(180);
   }
   circle(40, 24, '#FFA216');
+  petalSizes.push(segments.length - before);
 }
 
 function toCanvas(x, y) {
@@ -246,61 +251,97 @@ function drawSegment(seg) {
   ctx.stroke();
 }
 
-let idx = 0;
+let petalIdx = 0;
+let petalCursor = 0;
+let segInPetal = 0;
 function startFlower() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
-  idx = 0;
-  requestAnimationFrame(stepFlower);
+  petalIdx = 0;
+  petalCursor = 0;
+  segInPetal = 0;
+  requestAnimationFrame(drawPetalStep);
 }
-function stepFlower() {
-  const perFrame = 4;
-  for (let k = 0; k < perFrame && idx < segments.length; k++) {
-    drawSegment(segments[idx++]);
+function drawPetalStep() {
+  if (petalIdx >= petalSizes.length) {
+    setTimeout(finishFlower, 900);
+    return;
   }
-  if (idx < segments.length) {
-    requestAnimationFrame(stepFlower);
+  const petalLen = petalSizes[petalIdx];
+  const perFrame = 1; // very slow: ~37 frames per petal ≈ 0.6s
+  for (let k = 0; k < perFrame && segInPetal < petalLen; k++) {
+    drawSegment(segments[petalCursor + segInPetal]);
+    segInPetal++;
+  }
+  if (segInPetal < petalLen) {
+    requestAnimationFrame(drawPetalStep);
   } else {
-    setTimeout(finishFlower, 600);
+    petalCursor += petalLen;
+    petalIdx++;
+    segInPetal = 0;
+    setTimeout(() => requestAnimationFrame(drawPetalStep), 320);
   }
 }
 function finishFlower() {
   const c = toCanvas(0, 0);
-  const targetR = 48;
-  const duration = 1400;
+  // Soft green base disk grows in
+  const targetR = 52;
+  const duration = 1600;
   const start = performance.now();
-  function growCenter(now) {
-    const t = Math.min(1, (now - start) / duration);
-    const eased = 1 - Math.pow(1 - t, 3);
+  function growBase(now) {
+    const tt = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - tt, 3);
     const r = targetR * eased;
-    const grad = ctx.createRadialGradient(c.x, c.y, 4, c.x, c.y, Math.max(8, r + 6));
-    grad.addColorStop(0, '#3a1f08');
-    grad.addColorStop(1, '#7a3f10');
+    const grad = ctx.createRadialGradient(c.x, c.y, 4, c.x, c.y, Math.max(10, r + 8));
+    grad.addColorStop(0, '#1a3d10');
+    grad.addColorStop(0.7, '#2d5016');
+    grad.addColorStop(1, '#4a7c2a');
     ctx.beginPath();
-    ctx.shadowColor = '#FFA216';
+    ctx.shadowColor = '#6ba32f';
     ctx.shadowBlur = 35;
     ctx.fillStyle = grad;
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.fill();
-    if (t < 1) {
-      requestAnimationFrame(growCenter);
-    } else {
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFA216';
-      for (let i = 0; i < 80; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        const rr = Math.random() * 42;
-        ctx.beginPath();
-        ctx.arc(c.x + Math.cos(ang) * rr, c.y + Math.sin(ang) * rr, Math.random() * 1.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      setTimeout(() => {
-        document.getElementById('message').classList.add('show');
-      }, 500);
-      setTimeout(rainEmoji, 1800);
-    }
+    if (tt < 1) requestAnimationFrame(growBase);
+    else drawPhyllotaxis();
   }
-  requestAnimationFrame(growCenter);
+  requestAnimationFrame(growBase);
+
+  // Vogel phyllotaxis: golden-angle spiral of green seeds
+  function drawPhyllotaxis() {
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // 137.5°
+    const total = 280;
+    const scale = 2.7;
+    const greens = ['#7dd352','#5bb025','#3d8e16','#a3e261','#4a7c2a','#6ba32f'];
+    let i = 0;
+    function step() {
+      ctx.shadowBlur = 0;
+      const perFrame = 2;
+      for (let k = 0; k < perFrame && i < total; k++) {
+        const r = scale * Math.sqrt(i);
+        const theta = i * goldenAngle;
+        const x = c.x + r * Math.cos(theta);
+        const y = c.y + r * Math.sin(theta);
+        const size = 1.4 + (i / total) * 1.6;
+        ctx.beginPath();
+        ctx.fillStyle = greens[i % greens.length];
+        ctx.shadowColor = '#a3e261';
+        ctx.shadowBlur = 3;
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+        i++;
+      }
+      if (i < total) {
+        requestAnimationFrame(step);
+      } else {
+        setTimeout(() => {
+          document.getElementById('message').classList.add('show');
+        }, 700);
+        setTimeout(rainEmoji, 2200);
+      }
+    }
+    requestAnimationFrame(step);
+  }
 }
 
 // ============== RAIN ==============
