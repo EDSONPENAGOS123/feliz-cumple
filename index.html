@@ -339,9 +339,13 @@ function growStem() {
     const t = Math.min(1, (now - start) / dur);
     const eased = 1 - Math.pow(1 - t, 2);
     const len = totalLen * eased;
-    // overwrite stem strip each frame
+    // overwrite stem strip each frame — reset shadow so no green halo on the clear rect
+    ctx.save();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
     ctx.fillStyle = '#000';
-    ctx.fillRect(FLOWER_CX - 30, topY - 5, 60, totalLen + 15);
+    ctx.fillRect(FLOWER_CX - 40, topY - 10, 80, totalLen + 25);
+    ctx.restore();
 
     ctx.beginPath();
     ctx.strokeStyle = '#3d7a1a';
