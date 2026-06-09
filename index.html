@@ -199,7 +199,7 @@ const siVariants = [
   '¿En serio?',
   '¿De verdad de verdad?',
   '¿Segurísima?',
-  '¿De verdad, viere que me olvidé?',
+  '¿De verdad cree que me olvidé?',
   '¿Cómo crees?',
   'Insiste pues',
   '¿En serio en serio?',
@@ -222,12 +222,19 @@ function growNo() {
   noBtn.style.transform = `scale(${noScale})`;
 }
 function teleportSi() {
-  const pad = 20;
-  const w = Math.max(50, window.innerWidth  - siBtn.offsetWidth  - pad);
-  const h = Math.max(50, window.innerHeight - siBtn.offsetHeight - pad);
+  const pad = 16;
+  const safeGap = 90; // never closer than this to No
+  const noRect = noBtn.getBoundingClientRect();
+  // Force Sí into vertical band ABOVE No (so user always sees No clearly below)
+  const siW = siBtn.offsetWidth;
+  const siH = siBtn.offsetHeight;
+  const maxX = Math.max(pad + 1, window.innerWidth  - siW - pad);
+  const ceilY = Math.max(pad + 1, noRect.top - safeGap - siH);
+  const x = pad + Math.random() * (maxX - pad);
+  const y = pad + Math.random() * (ceilY - pad);
   siBtn.style.position = 'fixed';
-  siBtn.style.left = (pad + Math.random() * (w - pad)) + 'px';
-  siBtn.style.top  = (pad + Math.random() * (h - pad)) + 'px';
+  siBtn.style.left = x + 'px';
+  siBtn.style.top  = y + 'px';
 }
 function onSiContact(e) {
   if (e) e.preventDefault?.();
